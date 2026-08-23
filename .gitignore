@@ -1,0 +1,20 @@
+# Build output
+/out/
+/out-vmtest/
+/deploy/
+/dist/
+/installer/payload/
+
+# Downloaded model binaries and generated third-party license copies
+/models/*.onnx
+/third_party/vcpkg-licenses/
+
+# IDE/editor
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Local logs/temp
+*.log
+*.tmp
