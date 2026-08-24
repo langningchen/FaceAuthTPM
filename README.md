@@ -4,12 +4,6 @@ FaceAuthTPM is an experimental Windows x64 Credential Provider for **Microsoft-a
 
 > **Security warning:** FaceAuthTPM is **not Windows Hello** and does not provide Windows Hello's IR/depth anti-spoofing, Enhanced Sign-in Security, or biometric-key architecture. A normal RGB face matcher can be spoofed more easily. Use this project only if that tradeoff fits your threat model, and keep Windows Password/Hello available as recovery methods.
 
-### 中文简介
-
-FaceAuthTPM 是一个实验性的 Windows x64 第三方 Credential Provider：使用普通 RGB 摄像头区分已录入用户，然后用 TPM 保护的 Microsoft Account 密码完成系统登录。当前公开版只支持 Microsoft Account 身份，不支持本地账户的 FaceAuth 登录。它**不是 Windows Hello**，没有红外/深度防伪能力，因此适合明确接受较低物理访问安全性的个人设备，不应宣传为 Windows Hello 的等价替代品。正式版默认禁用 RDP 人脸认证，并始终保留系统 Password / Windows Hello Provider 作为恢复路径。
-
-发布给普通用户时只需要下载两个文件：`FaceAuthTPM-Setup.exe` 和 `FaceAuthTPM-Configure.ps1`。安装后以管理员 PowerShell 依次执行 `enroll`、`test`、`vault-test`，全部通过后再执行 `enable`。
-
 ## Highlights
 
 - Windows 10/11 x64 Credential Provider for Microsoft-account users.
@@ -191,7 +185,7 @@ third_party/                   upstream license files generated/fetched for rele
 
 FaceAuthTPM's own source code is licensed under the **GNU General Public License v3.0 only (`GPL-3.0-only`)**. See [`LICENSE`](LICENSE).
 
-The bundled OpenCV runtime and YuNet/SFace model files remain under their upstream licenses. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). YuNet is MIT-licensed and SFace is Apache-2.0 licensed by their upstream model repositories.
+The bundled OpenCV runtime, YuNet/SFace model files, and Material Icons asset remain under their upstream licenses. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
 ## Disclaimer
 

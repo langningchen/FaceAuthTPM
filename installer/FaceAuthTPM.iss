@@ -43,6 +43,7 @@ Source: "..\LICENSE"; DestDir: "{app}"; DestName: "COPYING.txt"; Flags: ignoreve
 Source: "..\THIRD_PARTY_NOTICES.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\third_party\YuNet-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\third_party\SFace-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "..\third_party\MaterialIcons-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
 Source: "..\third_party\vcpkg-licenses\*"; DestDir: "{app}\licenses\vcpkg"; Flags: ignoreversion recursesubdirs createallsubdirs
 #if HasVCRedist
 Source: "payload\vc_redist.x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall

@@ -64,14 +64,26 @@ target_link_libraries(FaceAuthVaultProbe PRIVATE FaceAuthCommon)
 
 add_library(FaceAuthCredentialProvider SHARED
   src/cp/FaceAuthCredentialProvider.def
+  src/cp/FaceAuthCredentialProvider.rc
   src/cp/Dll.cpp
   src/cp/Provider.cpp
   src/cp/Credential.cpp
   src/cp/CpHelpers.cpp
 )
-target_include_directories(FaceAuthCredentialProvider PRIVATE src)
+target_include_directories(FaceAuthCredentialProvider PRIVATE src src/cp)
 target_compile_definitions(FaceAuthCredentialProvider PRIVATE SECURITY_WIN32=1)
-target_link_libraries(FaceAuthCredentialProvider PRIVATE FaceAuthCommon advapi32 credui ole32 propsys secur32 shlwapi user32 wtsapi32)
+target_link_libraries(FaceAuthCredentialProvider PRIVATE
+  FaceAuthCommon
+  advapi32
+  credui
+  ole32
+  propsys
+  secur32
+  shlwapi
+  user32
+  windowscodecs
+  wtsapi32
+)
 if(FACEAUTH_TEST_ALLOW_REMOTE)
   target_compile_definitions(FaceAuthCredentialProvider PRIVATE FACEAUTH_TEST_ALLOW_REMOTE=1)
 endif()
