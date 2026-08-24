@@ -17,8 +17,12 @@ extern void DllAddRef();
 extern void DllRelease();
 
 enum : DWORD { FID_LOGO = 0, FID_TITLE = 1, FID_STATUS = 2, FID_COUNT = 3 };
+// Some Windows SDK versions do not expose CPFG_CREDENTIAL_PROVIDER_LOGO.
+// Keep the documented Windows 8+ field GUID local so the descriptor is portable.
+constexpr GUID kCredentialProviderLogoGuid = {
+    0x2d837775, 0xf6cd, 0x464e, {0xa7, 0x45, 0x48, 0x2f, 0xd0, 0xb4, 0x74, 0x93}};
 static const CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR kFields[FID_COUNT] = {
-    {FID_LOGO, CPFT_TILE_IMAGE, const_cast<PWSTR>(L"FaceAuth"), CPFG_CREDENTIAL_PROVIDER_LOGO},
+    {FID_LOGO, CPFT_TILE_IMAGE, const_cast<PWSTR>(L"FaceAuth"), kCredentialProviderLogoGuid},
     {FID_TITLE, CPFT_LARGE_TEXT, const_cast<PWSTR>(L"FaceAuth"), GUID_NULL},
     {FID_STATUS, CPFT_SMALL_TEXT, const_cast<PWSTR>(L"Status"), GUID_NULL}};
 
