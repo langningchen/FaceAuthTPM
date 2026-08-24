@@ -12,4 +12,4 @@ namespace faceauth {
 // camera, so startup diagnostics do not discard the first useful image.
 bool ScanUsingModelService(cv::VideoCapture& camera, int timeoutMs, std::wstring& sid,
                            std::wstring* error = nullptr, const cv::Mat* firstFrame = nullptr);
-}
+} // namespace faceauth

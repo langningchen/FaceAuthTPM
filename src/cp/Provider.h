@@ -1,30 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #pragma once
-#include <windows.h>
-#include <credentialprovider.h>
 #include <atomic>
+#include <credentialprovider.h>
 #include <mutex>
-#include <vector>
 #include <string>
+#include <vector>
+#include <windows.h>
 
 class FaceCredential;
 
 class FaceProvider final : public ICredentialProvider {
-public:
+  public:
     FaceProvider();
-    IFACEMETHODIMP QueryInterface(REFIID riid,void** ppv) override;
+    IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
     IFACEMETHODIMP_(ULONG) AddRef() override;
     IFACEMETHODIMP_(ULONG) Release() override;
 
-    IFACEMETHODIMP SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus,DWORD flags) override;
+    IFACEMETHODIMP SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, DWORD flags) override;
     IFACEMETHODIMP SetSerialization(const CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION*) override;
-    IFACEMETHODIMP Advise(ICredentialProviderEvents* events,UINT_PTR context) override;
+    IFACEMETHODIMP Advise(ICredentialProviderEvents* events, UINT_PTR context) override;
     IFACEMETHODIMP UnAdvise() override;
     IFACEMETHODIMP GetFieldDescriptorCount(DWORD* count) override;
-    IFACEMETHODIMP GetFieldDescriptorAt(DWORD index,CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** field) override;
-    IFACEMETHODIMP GetCredentialCount(DWORD* count,DWORD* defaultIndex,BOOL* autoLogonWithDefault) override;
-    IFACEMETHODIMP GetCredentialAt(DWORD index,ICredentialProviderCredential** credential) override;
-private:
+    IFACEMETHODIMP GetFieldDescriptorAt(DWORD index,
+                                        CREDENTIAL_PROVIDER_FIELD_DESCRIPTOR** field) override;
+    IFACEMETHODIMP GetCredentialCount(DWORD* count, DWORD* defaultIndex,
+                                      BOOL* autoLogonWithDefault) override;
+    IFACEMETHODIMP GetCredentialAt(DWORD index,
+                                   ICredentialProviderCredential** credential) override;
+
+  private:
     ~FaceProvider();
     void ClearCredentials();
     void RebuildCredentials();

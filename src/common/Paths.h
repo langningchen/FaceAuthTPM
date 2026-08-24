@@ -17,4 +17,4 @@ std::filesystem::path IdentityPath(const std::wstring& sid);
 std::filesystem::path CooldownPath(const std::wstring& sid);
 std::filesystem::path ModuleDirectory(void* moduleHandle);
 bool EnsureDataDirectories();
-}
+} // namespace faceauth

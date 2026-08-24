@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #pragma once
-#include <windows.h>
 #include <string_view>
+#include <windows.h>
 
 namespace faceauth {
 inline constexpr wchar_t kProductName[] = L"FaceAuth TPM";
@@ -16,4 +16,4 @@ inline constexpr double kMatchMargin = 0.055;
 inline constexpr int kRequiredConsecutiveMatches = 3;
 inline constexpr int kSensorTimeoutMs = 10000;
 inline constexpr int kSensorStartupGraceMs = 7000;
-}
+} // namespace faceauth

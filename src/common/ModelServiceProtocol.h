@@ -30,4 +30,4 @@ struct ModelResponseHeader {
     std::uint32_t sidChars; // UTF-16 code units, no terminator.
 };
 #pragma pack(pop)
-}
+} // namespace faceauth

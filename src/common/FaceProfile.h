@@ -13,4 +13,4 @@ bool SaveFaceProfile(const FaceProfile& profile, std::wstring* error = nullptr);
 bool LoadFaceProfile(const std::wstring& sid, FaceProfile& profile, std::wstring* error = nullptr);
 std::vector<FaceProfile> LoadAllFaceProfiles();
 bool DeleteFaceProfile(const std::wstring& sid);
-}
+} // namespace faceauth
