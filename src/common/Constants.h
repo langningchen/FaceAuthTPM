@@ -14,6 +14,6 @@ inline constexpr DWORD kCooldownSeconds = 60;
 inline constexpr double kMatchThreshold = 0.45;
 inline constexpr double kMatchMargin = 0.055;
 inline constexpr int kRequiredConsecutiveMatches = 3;
-inline constexpr int kSensorTimeoutMs = 10000;
+inline constexpr int kSensorTimeoutMs = 30000;
 inline constexpr int kSensorStartupGraceMs = 7000;
 } // namespace faceauth
