@@ -133,9 +133,42 @@ bool FaceEngine::ExtractEmbedding(const cv::Mat& frame, std::vector<float>& embe
         detector_->setInputSize(frame.size());
         cv::Mat faces;
         detector_->detect(frame, faces);
-        if (faces.rows != 1 || faces.cols < 15)
+        if (faces.rows < 1 || faces.cols < 15)
             return false;
-        cv::Mat row = faces.row(0);
+
+        int bestIdx = 0;
+        if (faces.rows > 1) {
+            const float frameCx = frame.cols / 2.0f;
+            const float frameCy = frame.rows / 2.0f;
+            const float maxDist = std::hypot(frameCx, frameCy);
+
+            float bestScore = -1.0f;
+
+            for (int i = 0; i < faces.rows; ++i) {
+                float x = faces.at<float>(i, 0);
+                float y = faces.at<float>(i, 1);
+                float w = faces.at<float>(i, 2);
+                float h = faces.at<float>(i, 3);
+
+                float area = w * h;
+
+                float faceCx = x + w / 2.0f;
+                float faceCy = y + h / 2.0f;
+
+                float dist = std::hypot(faceCx - frameCx, faceCy - frameCy);
+
+                float centerFactor = std::max(0.0f, 1.0f - (dist / maxDist));
+
+                float score = area * (0.4f + 0.6f * centerFactor);
+
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestIdx = i;
+                }
+            }
+        }
+
+        cv::Mat row = faces.row(bestIdx);
         cv::Mat aligned;
         recognizer_->alignCrop(frame, row, aligned);
         cv::Mat feature;
