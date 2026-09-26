@@ -96,6 +96,8 @@ HRESULT FaceProvider::QueryInterface(REFIID riid, void** ppv) {
     *ppv = nullptr;
     if (riid == IID_IUnknown || riid == IID_ICredentialProvider)
         *ppv = static_cast<ICredentialProvider*>(this);
+    else if (riid == __uuidof(ICredentialProviderWithDisplayState))
+        *ppv = static_cast<ICredentialProviderWithDisplayState*>(this);
     else
         return E_NOINTERFACE;
     AddRef();
@@ -118,17 +120,20 @@ HRESULT FaceProvider::SetUsageScenario(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, 
         return E_NOTIMPL;
 
     AppendProviderLog(L"SetUsageScenario_allowed");
-    {
-        std::scoped_lock lock(credentialMutex_);
-        matchedSid_.clear();
-        autoArmed_ = false;
-    }
-
     // v0.5: credentials are built directly from FaceAuth's enrollment metadata.
     // We intentionally do not implement ICredentialProviderSetUserArray, so LogonUI
     // has no SetUserArray synchronization point to wait on before GetCredentialCount.
+    matchState_->Clear();
+
+    // Assume the curtain is down until LogonUI tells us otherwise via
+    // SetDisplayState. CurtainWatchdog (started below) is the fallback for
+    // shells/OS builds that never send that undocumented callback at all.
+    curtainActive_.store(true);
+    sawDisplayState_.store(false);
+
     RebuildCredentials();
     MaybeStartRecognition();
+    StartCurtainWatchdog();
     return S_OK;
 }
 
@@ -146,11 +151,7 @@ HRESULT FaceProvider::Advise(ICredentialProviderEvents* e, UINT_PTR c) {
         if (events_)
             events_->AddRef();
     }
-    bool matched = false;
-    {
-        std::scoped_lock lock(credentialMutex_);
-        matched = autoArmed_.load() && !matchedSid_.empty();
-    }
+    const bool matched = matchState_->HasPending();
     if (matched && e)
         e->CredentialsChanged(c);
     else
@@ -186,14 +187,12 @@ HRESULT FaceProvider::GetCredentialCount(DWORD* count, DWORD* def, BOOL* autoLog
     *count = static_cast<DWORD>(credentials_.size());
     *def = CREDENTIAL_PROVIDER_NO_DEFAULT;
     *autoLogon = FALSE;
-    if (autoArmed_.exchange(false) && !matchedSid_.empty() &&
-        !faceauth::IsInCooldown(matchedSid_)) {
-        for (size_t i = 0; i < credentials_.size(); ++i) {
-            if (credentials_[i]->Sid() == matchedSid_) {
-                *def = static_cast<DWORD>(i);
-                *autoLogon = TRUE;
-                break;
-            }
+    for (size_t i = 0; i < credentials_.size(); ++i) {
+        const auto& sid = credentials_[i]->Sid();
+        if (matchState_->Peek(sid) && !faceauth::IsInCooldown(sid)) {
+            *def = static_cast<DWORD>(i);
+            *autoLogon = TRUE;
+            break;
         }
     }
     return S_OK;
@@ -207,6 +206,19 @@ HRESULT FaceProvider::GetCredentialAt(DWORD i, ICredentialProviderCredential** c
         return E_INVALIDARG;
     *c = credentials_[i];
     (*c)->AddRef();
+    return S_OK;
+}
+
+HRESULT FaceProvider::SetDisplayState(DWORD flags) {
+    sawDisplayState_.store(true);
+    const bool isCurtainDown = (flags & (CPDSF_CURTAIN | CPDSF_CURTAIN_MOVING)) != 0;
+    curtainActive_.store(isCurtainDown);
+    wchar_t logMsg[128]{};
+    swprintf_s(logMsg, L"SetDisplayState flags=0x%08X curtain=%ls", flags,
+               isCurtainDown ? L"yes" : L"no");
+    AppendProviderLog(logMsg);
+    if (!isCurtainDown)
+        MaybeStartRecognition();
     return S_OK;
 }
 
@@ -239,8 +251,8 @@ void FaceProvider::RebuildCredentials() {
             if (unlockSid.empty() || identity.sid != unlockSid)
                 continue;
         }
-        auto* credential = new (std::nothrow)
-            FaceCredential(cpus_, identity.sid, identity.qualifiedName, identity.displayName);
+        auto* credential = new (std::nothrow) FaceCredential(
+            cpus_, identity.sid, identity.qualifiedName, identity.displayName, matchState_);
         if (credential)
             fresh.push_back(credential);
     }
@@ -275,13 +287,19 @@ void FaceProvider::MaybeStartRecognition() {
     if ((cpus_ != CPUS_LOGON && cpus_ != CPUS_UNLOCK_WORKSTATION) ||
         !faceauth::IsFaceAuthSessionAllowed())
         return;
+
+    if (curtainActive_.load()) {
+        AppendProviderLog(L"MaybeStartRecognition_skipped_curtain_active");
+        return;
+    }
+
     {
         std::scoped_lock lock(credentialMutex_);
         if (credentials_.empty())
             return;
-        if (autoArmed_.load() && !matchedSid_.empty())
-            return;
     }
+    if (matchState_->HasPending())
+        return;
     bool expected = false;
     if (!recognitionStarted_.compare_exchange_strong(expected, true))
         return;
@@ -307,10 +325,20 @@ void FaceProvider::RecognitionWorker() {
         if ((cpus_ != CPUS_LOGON && cpus_ != CPUS_UNLOCK_WORKSTATION) ||
             !faceauth::IsFaceAuthSessionAllowed())
             break;
+
+        if (curtainActive_.load()) {
+            AppendProviderLog(L"recognition_aborted_curtain_active");
+            break;
+        }
+
         AppendProviderLog(L"sensor_spawn_begin");
-        std::wstring sid = faceauth::RunFaceSensor(g_faceAuthModule, faceauth::kSensorTimeoutMs);
+        std::wstring sid =
+            faceauth::RunFaceSensor(g_faceAuthModule, faceauth::kSensorTimeoutMs, &curtainActive_);
         AppendProviderLog(sid.empty() ? L"sensor_return_empty" : L"sensor_return_match");
         if (sid.empty()) {
+            if (curtainActive_.load())
+                break;
+
             bool advised = false;
             {
                 std::scoped_lock lock(eventMutex_);
@@ -335,11 +363,7 @@ void FaceProvider::RecognitionWorker() {
         if (faceauth::IsInCooldown(sid))
             break;
 
-        {
-            std::scoped_lock lock(credentialMutex_);
-            matchedSid_ = sid;
-            autoArmed_ = true;
-        }
+        matchState_->Arm(sid);
         ICredentialProviderEvents* ev = nullptr;
         UINT_PTR ctx = 0;
         {
@@ -356,4 +380,35 @@ void FaceProvider::RecognitionWorker() {
         break;
     }
     recognitionStarted_ = false;
+}
+
+void FaceProvider::StartCurtainWatchdog() {
+    AddRef();
+    HANDLE h = CreateThread(nullptr, 0, &FaceProvider::CurtainWatchdogThread, this, 0, nullptr);
+    if (h)
+        CloseHandle(h);
+    else
+        Release();
+}
+
+DWORD WINAPI FaceProvider::CurtainWatchdogThread(void* p) {
+    static_cast<FaceProvider*>(p)->CurtainWatchdog();
+    static_cast<FaceProvider*>(p)->Release();
+    return 0;
+}
+
+void FaceProvider::CurtainWatchdog() {
+    // SetDisplayState/CPDSF_CURTAIN is an undocumented LogonUI callback with
+    // no guarantee it exists on every Windows build/shell. If it never
+    // arrives, curtainActive_ would otherwise stay permanently true (its
+    // default) and face recognition would silently never run again for this
+    // logon session. Give LogonUI a few seconds; if nothing showed up,
+    // assume this environment doesn't send it and fall back to running
+    // recognition unconditionally, matching pre-curtain-awareness behavior.
+    Sleep(3000);
+    if (!sawDisplayState_.load()) {
+        AppendProviderLog(L"curtain_watchdog_no_displaystate_assuming_unsupported");
+        curtainActive_.store(false);
+        MaybeStartRecognition();
+    }
 }

@@ -66,7 +66,8 @@ HRESULT DupString(PCWSTR src, PWSTR* dst) {
     return S_OK;
 }
 
-std::wstring RunFaceSensor(void* moduleHandle, int timeoutMs) {
+std::wstring RunFaceSensor(void* moduleHandle, int timeoutMs,
+                           const std::atomic<bool>* cancelRequested) {
     auto exe = ModuleDirectory(moduleHandle) / L"FaceAuthSensor.exe";
     if (!std::filesystem::exists(exe))
         return {};
@@ -138,6 +139,12 @@ std::wstring RunFaceSensor(void* moduleHandle, int timeoutMs) {
         const DWORD state = WaitForSingleObject(pi.hProcess, 0);
         if (state == WAIT_OBJECT_0)
             break;
+        if (cancelRequested && cancelRequested->load()) {
+            timedOut = true;
+            TerminateProcess(pi.hProcess, 125);
+            WaitForSingleObject(pi.hProcess, 1000);
+            break;
+        }
         if (GetTickCount64() >= deadline) {
             timedOut = true;
             TerminateProcess(pi.hProcess, 124);

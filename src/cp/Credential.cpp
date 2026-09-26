@@ -110,8 +110,10 @@ HRESULT LoadFaceUnlockIcon(HBITMAP* bitmap) {
 } // namespace
 
 FaceCredential::FaceCredential(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, std::wstring sid,
-                               std::wstring q, std::wstring d)
-    : cpus_(cpus), sid_(std::move(sid)), qualifiedName_(std::move(q)), displayName_(std::move(d)) {
+                               std::wstring q, std::wstring d,
+                               std::shared_ptr<faceauth::MatchState> matchState)
+    : cpus_(cpus), sid_(std::move(sid)), qualifiedName_(std::move(q)), displayName_(std::move(d)),
+      matchState_(std::move(matchState)) {
     DllAddRef();
 }
 FaceCredential::~FaceCredential() {
@@ -208,6 +210,13 @@ HRESULT FaceCredential::GetSerialization(CREDENTIAL_PROVIDER_GET_SERIALIZATION_R
     if ((cpus_ != CPUS_LOGON && cpus_ != CPUS_UNLOCK_WORKSTATION) ||
         !faceauth::IsFaceAuthSessionAllowed())
         return E_ACCESSDENIED;
+    if (!matchState_ || !matchState_->ConsumeIfMatches(sid_)) {
+        faceauth::DupString(L"Face sign-in has not confirmed this user yet. Look at the "
+                            L"camera, or use Password/Windows Hello.",
+                            status);
+        *icon = CPSI_WARNING;
+        return S_OK;
+    }
     if (faceauth::IsInCooldown(sid_)) {
         faceauth::DupString(
             L"Face sign-in is cooling down after a failed attempt. Use Password or Windows Hello.",
@@ -263,6 +272,8 @@ HRESULT FaceCredential::ReportResult(NTSTATUS status, NTSTATUS, PWSTR* text,
         return E_INVALIDARG;
     *text = nullptr;
     *icon = CPSI_NONE;
+    if (matchState_)
+        matchState_->Clear();
     if (status < 0) {
         faceauth::SetCooldown(sid_);
         faceauth::DupString(L"Face sign-in failed. Use Password/Windows Hello. If your Microsoft "

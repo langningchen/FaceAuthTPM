@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: GPL-3.0-only
 #pragma once
+#include "cp/MatchState.h"
 #include <atomic>
 #include <credentialprovider.h>
+#include <memory>
 #include <string>
 #include <windows.h>
 
 class FaceCredential final : public ICredentialProviderCredential2 {
   public:
     FaceCredential(CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus, std::wstring sid,
-                   std::wstring qualifiedName, std::wstring displayName);
+                   std::wstring qualifiedName, std::wstring displayName,
+                   std::shared_ptr<faceauth::MatchState> matchState);
     const std::wstring& Sid() const { return sid_; }
 
     IFACEMETHODIMP QueryInterface(REFIID riid, void** ppv) override;
@@ -43,4 +46,5 @@ class FaceCredential final : public ICredentialProviderCredential2 {
     CREDENTIAL_PROVIDER_USAGE_SCENARIO cpus_;
     std::wstring sid_, qualifiedName_, displayName_;
     ICredentialProviderCredentialEvents* events_{};
+    std::shared_ptr<faceauth::MatchState> matchState_;
 };
