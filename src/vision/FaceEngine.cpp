@@ -141,6 +141,9 @@ bool FaceEngine::ExtractEmbedding(const cv::Mat& frame, std::vector<float>& embe
             const float frameCx = frame.cols / 2.0f;
             const float frameCy = frame.rows / 2.0f;
             const float maxDist = std::hypot(frameCx, frameCy);
+            const float frameArea = static_cast<float>(frame.cols) * frame.rows;
+            constexpr float kPositionWeight = 0.8f;
+            constexpr float kSizeWeight = 0.2f;
 
             float bestScore = -1.0f;
 
@@ -159,7 +162,9 @@ bool FaceEngine::ExtractEmbedding(const cv::Mat& frame, std::vector<float>& embe
 
                 float centerFactor = std::max(0.0f, 1.0f - (dist / maxDist));
 
-                float score = area * (0.4f + 0.6f * centerFactor);
+                // Normalize size so proximity to the frame center dominates selection.
+                float sizeFactor = std::clamp(area / frameArea, 0.0f, 1.0f);
+                float score = kPositionWeight * centerFactor + kSizeWeight * sizeFactor;
 
                 if (score > bestScore) {
                     bestScore = score;
